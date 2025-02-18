@@ -24,36 +24,36 @@ def extract_declare_begin_blocks(sql_file_path):
     return declare_blocks, begin_blocks
 
 
-# === WORK IN PROGRESS, needs more work for skipping CURSORs properly. === 
-# def process_declare_section(section):
-#     """
-#     Process each DECLARE section, ensuring that variables are only declared once.
-#     """
-#     lines = section.strip().splitlines()
-#     new_lines = []
-#     declared_variables = {}
+# Process each DECLARE section, ensure that variables are only declared once.
+def process_declare_section(section):
+
+    processed_lines = []
+    declared_variables = {}
     
-#     for line in lines:
-#         line = line.strip()
-#         if line:  # Avoid empty lines
-#             # Extract variable and type (assuming standard DECLARE syntax)
-#             match = re.match(r"(\w+)\s+(\w+)", line)  # (variable, type)
-#             if match:
-#                 var_name, var_type = match.groups()
+    for line in section:
+        line = line.strip() # Remove extra spaces/newlines.
 
-#                 if var_name == "CURSOR": # Ignore CURSORs
-#                     continue
+        match = re.match(r"(\w+)\s+(\w+).*;", line) 
 
-#                 if var_name in declared_variables and var_type != declared_variables[var_name]:
-#                     print(f"varname: {var_name}, vartype: {var_type}, existing_vartype: {declared_variables[var_name]}")
-#                     raise Exception(f"{var_name} is declared multiple times, with DIFFERENT types. Edit the file and change its name or type accordingly.")
-                
-#                 # Check if the variable has already been declared
-#                 if var_name not in declared_variables:
-#                     declared_variables[var_name] = var_type  # Add to dictionary of declared variables
-#                     new_lines.append(f"  {line}")  # Keep the line if variable is unique
-                    
-#     return new_lines
+        # If it's not a variable, or is a cursor, or a new-line continuation of a cursor, preserve as-is.
+        if line.upper().startswith("CURSOR") or not match: 
+            processed_lines.append(line)
+            continue
+
+        # Extract variable and type (assuming standard DECLARE syntax).
+        if match:
+            var_name, var_type = match.groups()
+
+            if var_name in declared_variables and var_type != declared_variables[var_name]:
+                print(f"varname: {var_name}, vartype: {var_type}, existing_vartype: {declared_variables[var_name]}")
+                raise Exception(f"{var_name} is declared multiple times, with DIFFERENT types. Edit the file and change its name or type accordingly.")
+            
+            # Check if the variable has     already been declared
+            if var_name not in declared_variables:
+                declared_variables[var_name] = var_type  # Add to dictionary of declared variables
+                processed_lines.append(f"  {line}")  # Keep the line if variable is unique
+
+    return processed_lines
 
 
 def create_sql_block(declare_blocks, begin_blocks):
@@ -76,7 +76,7 @@ def create_sql_block(declare_blocks, begin_blocks):
         lines = section.strip().splitlines()
         for line in lines:
             sql_code += f"  {line.strip()}\n"
-        sql_code += "-- ===\n"
+        sql_code += "\n-- ===\n"
 
     sql_code += "END;\n/\n"
 
@@ -89,16 +89,23 @@ def write_to_sql_file(output_file_path, sql_script):
     with open(output_file_path, "w", encoding="utf-8") as file:
         file.write(sql_script)
 
+
+def run_program():
+    initial_sql_file = "add_your_sql_here.sql"
+    clean_sql_file = "clean_sql.sql"
+
+    # Extract DECLARE and BEGIN-END blocks.
+    declare_blocks, begin_blocks = extract_declare_begin_blocks(initial_sql_file)
+
+    # Remove variable duplicates. Check if there are duplicate variables with different types.
+    declare_blocks = process_declare_section(declare_blocks)
+
+    # Create one-block PL/SQL file.
+    oneblock_sql = create_sql_block(declare_blocks, begin_blocks)
+
+    write_to_sql_file(clean_sql_file, oneblock_sql)
+
+
 # === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === 
 
-initial_sql_file = "add_your_sql_here.sql"
-clean_sql_file = "clean_sql.sql"
-
-# Extract DECLARE and BEGIN-END blocks.
-declare_blocks, begin_blocks = extract_declare_begin_blocks(initial_sql_file)
-
-# Create one-block PL/SQL file.
-oneblock_sql = create_sql_block(declare_blocks, begin_blocks)
-
-write_to_sql_file(clean_sql_file, oneblock_sql)
-
+run_program()
