@@ -58,7 +58,6 @@ def extract_declare_begin_blocks(sql_file_path):
 
 def create_sql_block(declare_blocks, begin_blocks):
 
-
     # DECLARE Block.
     print("Creating final DECLARE block.")
     sql_code = "DECLARE\n"
