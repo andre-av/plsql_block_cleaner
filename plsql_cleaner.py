@@ -1,4 +1,7 @@
 import re
+import traceback
+import time
+
 
 def extract_declare_begin_blocks(sql_file_path):
     
@@ -9,6 +12,8 @@ def extract_declare_begin_blocks(sql_file_path):
     print("Beginning extraction of declare blocks.")
     # Regular expression pattern to capture DECLARE blocks.
     declare_pattern = r"DECLARE\s+(.*?)(?=\s+BEGIN)"  # Non-greedy match up to BEGIN.
+    # declare_pattern = r"((?:--[^\n]*\n|/\*.*?\*/\s*)*)DECLARE\s+(.*?)(?=\s+BEGIN)"  # TODO retrieve comments INBETWEEN PL/SQL blocks.
+
 
     # Find all matches (using DOTALL to match across multiple lines).
     declare_blocks = re.findall(declare_pattern, sql_text, re.DOTALL | re.IGNORECASE)
@@ -26,6 +31,8 @@ def extract_declare_begin_blocks(sql_file_path):
 
 # Process each DECLARE section, ensure that variables are only declared once.
 def process_declare_section(section):
+
+    print("Removing duplicate declarations in final DECLARE block.")
 
     processed_lines = []
     declared_variables = {}
@@ -45,8 +52,14 @@ def process_declare_section(section):
             var_name, var_type = match.groups()
 
             if var_name in declared_variables and var_type != declared_variables[var_name]:
-                print(f"varname: {var_name}, vartype: {var_type}, existing_vartype: {declared_variables[var_name]}")
+                print(f"\n === === ERROR! === ===")
+                print(f"Variable {var_name} is declared multiple times, with DIFFERENT types.\nEdit the file and change its name or type accordingly.")
+                print(f"- Variable: {var_name}")
+                print(f"- Existing variable type: {declared_variables[var_name]}")
+                print(f"- New variable type found: {var_type} ")
+                input("\nProgram stopped prematurely. Press ENTER to exit.")  # Preventing window from closing immediately.
                 raise Exception(f"{var_name} is declared multiple times, with DIFFERENT types. Edit the file and change its name or type accordingly.")
+
             
             # Check if the variable has     already been declared
             if var_name not in declared_variables:
@@ -91,6 +104,7 @@ def write_to_sql_file(output_file_path, sql_script):
 
 
 def run_program():
+    print("")
     initial_sql_file = "add_your_sql_here.sql"
     clean_sql_file = "clean_sql.sql"
 
@@ -104,6 +118,9 @@ def run_program():
     oneblock_sql = create_sql_block(declare_blocks, begin_blocks)
 
     write_to_sql_file(clean_sql_file, oneblock_sql)
+
+    print("\nSuccessful. Closing in 2s.")
+    time.sleep(2)
 
 
 # === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === === 
